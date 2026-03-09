@@ -88,7 +88,7 @@ async function loadOffres() {
       +'<div class="offre-num">0'+(i+1)+' — '+(o.categorie||'')+'</div>'
       +'<h3>'+(o.titre||'')+'</h3>'
       +'<p>'+(o.description||'')+'</p>'
-      +'<a href="#" class="offre-link">'+(o.cta_label||'En savoir plus')+'</a>'
+      +'<a href="#" class="offre-link" data-page="'+(o.cta_page||'contact')+'">'+(o.cta_label||'En savoir plus')+' →</a>'
     +'</div>';
   }).join('');
 }
@@ -116,6 +116,16 @@ async function loadCasClients() {
 
 /* Délégation au niveau document — zéro risque de timing ou de propagation */
 document.addEventListener('click', function(e) {
+  // Liens "En savoir plus" des offres
+  var offreLink = e.target.closest('.offre-link');
+  if (offreLink) {
+    e.preventDefault();
+    var page = offreLink.getAttribute('data-page') || 'contact';
+    if (typeof showPage === 'function') showPage(page);
+    return;
+  }
+
+  // Boutons "Voir le cas client"
   var btn = e.target.closest('.zv-cas-btn');
   if (!btn) return;
   e.preventDefault();

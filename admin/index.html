@@ -204,6 +204,18 @@
     /* ── HEADER EXTRAS ── */
     .header-center { display:flex; align-items:center; gap:.8rem; }
 
+    /* ── FORCE MOT DE PASSE ── */
+    .pwd-strength { margin-top:.4rem; }
+    .pwd-bar { height:4px; border-radius:2px; background:var(--border); margin-bottom:.3rem; overflow:hidden; }
+    .pwd-bar-fill { height:100%; border-radius:2px; transition:width .3s, background .3s; width:0%; }
+    .pwd-label { font-size:.72rem; font-weight:600; }
+    .pwd-weak   .pwd-bar-fill { width:33%; background:#ef4444; }
+    .pwd-medium .pwd-bar-fill { width:66%; background:#f59e0b; }
+    .pwd-strong .pwd-bar-fill { width:100%; background:#16a34a; }
+    .pwd-weak   .pwd-label { color:#ef4444; }
+    .pwd-medium .pwd-label { color:#f59e0b; }
+    .pwd-strong .pwd-label { color:#16a34a; }
+
     /* ── MODAL INVITATION ── */
     .invite-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9000; align-items:center; justify-content:center; padding:1.5rem; }
     .invite-modal-bg.open { display:flex; }
@@ -418,23 +430,67 @@ async function ghSha(path) {
 }
 
 /* ══════════════════════════════════════════════════════
-   AUTH
+   AUTH — sécurisé
+   • Token stocké en base64 (obfuscation basique)
+   • Sessions expirantes (SESSION_TTL_H heures)
+   • Anti brute-force (MAX_ATTEMPTS tentatives, LOCKOUT_MIN min)
 ══════════════════════════════════════════════════════ */
+const SESSION_TTL_H  = 8;   // durée de session en heures
+const MAX_ATTEMPTS   = 5;   // tentatives avant verrouillage
+const LOCKOUT_MIN    = 15;  // durée du verrouillage en minutes
+
 function encodeToken(t){ return btoa(t); }
 function decodeToken(c){ try{return atob(c.trim());}catch(e){return '';} }
-function showErr(id,msg){ const e=document.getElementById(id); e.textContent=msg; e.style.display='block'; }
-function hideErr(id){ document.getElementById(id).style.display='none'; }
+function showErr(id,msg){ var e=document.getElementById(id); if(e){e.textContent=msg;e.style.display='block';} }
+function hideErr(id){ var e=document.getElementById(id); if(e) e.style.display='none'; }
 
+/* ── Anti brute-force ── */
+function getAttempts() {
+  try { return JSON.parse(localStorage.getItem('zv_attempts')||'{}'); } catch(e){ return {}; }
+}
+function isLocked() {
+  var a = getAttempts();
+  if (!a.until) return false;
+  if (Date.now() < a.until) return true;
+  localStorage.removeItem('zv_attempts'); return false;
+}
+function getLockRemaining() {
+  var a = getAttempts();
+  return a.until ? Math.ceil((a.until - Date.now()) / 60000) : 0;
+}
+function recordFailedAttempt() {
+  var a = getAttempts();
+  a.count = (a.count||0) + 1;
+  if (a.count >= MAX_ATTEMPTS) a.until = Date.now() + LOCKOUT_MIN * 60000;
+  localStorage.setItem('zv_attempts', JSON.stringify(a));
+  return a.count;
+}
+function clearAttempts() { localStorage.removeItem('zv_attempts'); }
+
+/* ── Session ── */
+function sessionIsExpired(s) {
+  if (!s || !s.expiresAt) return true;
+  return Date.now() > s.expiresAt;
+}
+function createSession(user) {
+  return { email:user.email, name:user.name, role:user.role,
+           createdAt:Date.now(), expiresAt:Date.now() + SESSION_TTL_H*3600000 };
+}
+function saveSession(s) {
+  localStorage.setItem('zv_session', JSON.stringify(s));
+}
+
+/* ── Premier lancement ── */
 async function checkFirstRun() {
-  const stored = localStorage.getItem('zv_token');
+  var stored = localStorage.getItem('zv_token');
   if (!stored) { showScreen('setup'); return; }
   GH_TOKEN = decodeToken(stored);
   try {
-    const r = await fetch(ghUrl(FILES.users), { headers:ghH() });
+    var r = await fetch(ghUrl(FILES.users), { headers:ghH() });
     if (!r.ok) { showScreen('setup'); return; }
-    const d = await r.json();
-    const bytes = new Uint8Array(atob(d.content.replace(/\n/g,'')).split('').map(c=>c.charCodeAt(0)));
-    const users = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+    var d = await r.json();
+    var bytes = new Uint8Array(atob(d.content.replace(/\n/g,'')).split('').map(function(c){return c.charCodeAt(0);}));
+    var users = JSON.parse(new TextDecoder('utf-8').decode(bytes));
     if (!users.users || users.users.length===0) { showScreen('setup'); return; }
     showScreen('login');
   } catch(e) { showScreen('login'); }
@@ -466,34 +522,74 @@ async function doSetup() {
 
 async function doLogin() {
   hideErr('login-err');
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
-  const pwd   = document.getElementById('login-pwd').value;
-  const code  = document.getElementById('login-code') ? document.getElementById('login-code').value.trim() : '';
+
+  // Verrouillage anti brute-force
+  if (isLocked()) {
+    showErr('login-err', 'Trop de tentatives. Reessayez dans '+getLockRemaining()+' min.');
+    return;
+  }
+
+  var email = document.getElementById('login-email').value.trim().toLowerCase();
+  var pwd   = document.getElementById('login-pwd').value;
+  var codeEl = document.getElementById('login-code');
+  var code  = codeEl ? codeEl.value.trim() : '';
+
   if (!email||!pwd){ showErr('login-err','Email et mot de passe requis.'); return; }
+
+  // Gestion du token GitHub
   if (code) {
-    const decoded = decodeToken(code);
-    if (!decoded||!decoded.startsWith('ghp_')){ showErr('login-err',"Code d'acces invalide."); return; }
+    var decoded = decodeToken(code);
+    if (!decoded||!decoded.startsWith('ghp_')){
+      showErr('login-err','Code acces invalide.');
+      return;
+    }
     GH_TOKEN = decoded;
     localStorage.setItem('zv_token', encodeToken(decoded));
   } else {
-    const stored = localStorage.getItem('zv_token');
-    if (!stored){ showErr('login-err',"Premiere connexion : entrez votre code d'acces."); return; }
+    var stored = localStorage.getItem('zv_token');
+    if (!stored){
+      showErr('login-err','Premiere connexion : cliquez sur Premiere connexion et entrez votre code acces.');
+      return;
+    }
     GH_TOKEN = decodeToken(stored);
   }
+
+  var loginBtn = document.getElementById('btn-login');
+  if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'Connexion...'; }
+
   try {
-    const {data} = await ghRead(FILES.users);
-    const hash = await sha256(pwd);
-    const user = (data.users||[]).find(u => u.email===email && u.passwordHash===hash);
-    if (!user){ showErr('login-err','Email ou mot de passe incorrect.'); return; }
-    session = {email:user.email, name:user.name, role:user.role};
-    localStorage.setItem('zv_session', JSON.stringify(session));
+    var result = await ghRead(FILES.users);
+    var hash = await sha256(pwd);
+    var user = (result.data.users||[]).find(function(u){ return u.email===email && u.passwordHash===hash; });
+
+    if (!user) {
+      var count = recordFailedAttempt();
+      var remaining = MAX_ATTEMPTS - count;
+      if (remaining <= 0) {
+        showErr('login-err', 'Compte verrouille '+LOCKOUT_MIN+' min apres trop de tentatives.');
+      } else {
+        showErr('login-err', 'Email ou mot de passe incorrect. ('+remaining+' tentative'+(remaining>1?'s':'')+' restante'+(remaining>1?'s':'')+')');
+      }
+      return;
+    }
+
+    clearAttempts();
+    session = createSession(user);
+    saveSession(session);
     startAdmin();
-  } catch(e){ showErr('login-err','Erreur : '+e.message); }
+
+  } catch(e) {
+    showErr('login-err', 'Erreur de connexion : '+e.message);
+  } finally {
+    if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Connexion'; }
+  }
 }
 
 function doLogout() {
   localStorage.removeItem('zv_session');
   session = null;
+  GH_TOKEN = '';
+  clearAttempts();
   showScreen('login');
 }
 
@@ -726,7 +822,7 @@ function rUsers(d) {
       +'<table class="user-table"><thead><tr><th>Nom</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
     +'</div>'
     +'<div class="form-card">'
-      +'<div class="form-card-title">Ajouter un utilisateur</div>'
+      +'<div class="form-card">'      +'<div class="form-card-title">Changer mon mot de passe</div>'      +'<div class="field-row">'        +'<div class="field"><label>Mot de passe actuel</label><input type="password" id="cp-old" placeholder="Mot de passe actuel" /></div>'        +'<div class="field"><label>Nouveau mot de passe</label><input type="password" id="cp-new" placeholder="Min. 8 caracteres" oninput="checkPwdStrength2(this.value)" /></div>'      +'</div>'      +'<div class="pwd-strength" id="pwd-strength2" style="display:none;">'        +'<div class="pwd-bar"><div class="pwd-bar-fill" id="pwd-bar-fill2"></div></div>'        +'<span class="pwd-label" id="pwd-label2"></span>'      +'</div>'      +'<button class="btn btn-primary" data-action="change-pwd" style="width:auto;padding:.7rem 2rem;margin-top:1rem;">Mettre a jour</button>'      +'<div id="cp-msg" style="margin-top:.8rem;font-size:.84rem;display:none;"></div>'    +'</div>'      +'<div class="form-card-title">Ajouter un utilisateur</div>'
       +'<div class="field-row">'
         +'<div class="field"><label>Nom complet</label><input type="text" id="new-name" placeholder="Prenom Nom" /></div>'
         +'<div class="field"><label>Email</label><input type="email" id="new-email" placeholder="prenom@zenvalue.fr" /></div>'
@@ -738,6 +834,32 @@ function rUsers(d) {
       +'<button class="btn btn-primary" data-action="add-user" style="width:auto;padding:.7rem 2rem;margin-top:.5rem;">Ajouter</button>'
       +'<div id="user-msg" style="margin-top:.8rem;font-size:.84rem;display:none;"></div>'
     +'</div>';
+}
+
+function checkPwdStrength(pwd) {
+  var el = document.getElementById('pwd-strength');
+  var bar = document.getElementById('pwd-bar-fill').parentElement.parentElement;
+  var lbl = document.getElementById('pwd-label');
+  if (!el) return;
+  if (!pwd) { el.style.display='none'; return; }
+  el.style.display = 'block';
+  bar.className = 'pwd-bar';
+  var score = 0;
+  if (pwd.length >= 8)  score++;
+  if (pwd.length >= 12) score++;
+  if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  if (score <= 1) { bar.className='pwd-strength pwd-weak';   lbl.textContent='Faible'; }
+  else if (score <= 2) { bar.className='pwd-strength pwd-medium'; lbl.textContent='Moyen'; }
+  else { bar.className='pwd-strength pwd-strong'; lbl.textContent='Fort'; }
+}
+
+function togglePwdVisibility() {
+  var inp = document.getElementById('new-pwd');
+  var eye = document.getElementById('pwd-eye');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  if (eye) eye.textContent = inp.type === 'password' ? '👁' : '🙈';
 }
 
 function showInviteModal(name, email, pwd, role) {
@@ -762,15 +884,15 @@ function showInviteModal(name, email, pwd, role) {
     '--- Tes identifiants de connexion ---',
     'Acces  : ' + adminUrl,
     'Email  : ' + email,
-    'Mot de passe : ' + pwd,
+    'Mot de passe : [celui choisi lors de la creation de ton compte]',
     '',
     '--- Code d\'acces (premiere connexion uniquement) ---',
     code,
     '',
     'Pour te connecter la premiere fois :',
     '1. Ouvre le lien ci-dessus',
-    '2. Saisis ton email et ton mot de passe',
-    '3. Clique sur "Premiere connexion" et colle le code d\'acces',
+    '2. Saisis ton email et le mot de passe communique separement',
+    '3. Clique sur "Premiere connexion" et colle le code d\'acces ci-dessus',
     '4. Le code ne sera demande qu\'une seule fois sur cet appareil',
     '',
     'N\'hesite pas a me contacter si tu as la moindre question.',
@@ -815,6 +937,51 @@ async function addUser() {
     document.getElementById('admin-main').innerHTML = rUsers(updated);
     showInviteModal(name, email, pwd, role);
   } catch(e){ showMsg(msg,'Erreur : '+e.message,false); }
+  finally { document.getElementById('overlay').classList.remove('on'); }
+}
+
+function checkPwdStrength2(pwd) {
+  var el = document.getElementById('pwd-strength2');
+  var bar = document.getElementById('pwd-bar-fill2');
+  var lbl = document.getElementById('pwd-label2');
+  if (!el||!bar||!lbl) return;
+  if (!pwd) { el.style.display='none'; return; }
+  el.style.display='block';
+  var score=0;
+  if (pwd.length>=8) score++;
+  if (pwd.length>=12) score++;
+  if (/[A-Z]/.test(pwd)&&/[0-9]/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  var cfg = score<=1 ? {w:'33%',bg:'#ef4444',t:'Faible'} : score<=2 ? {w:'66%',bg:'#f59e0b',t:'Moyen'} : {w:'100%',bg:'#16a34a',t:'Fort'};
+  bar.style.width=cfg.w; bar.style.background=cfg.bg;
+  lbl.textContent=cfg.t; lbl.style.color=cfg.bg;
+}
+
+async function changePwd() {
+  var oldPwd = document.getElementById('cp-old').value;
+  var newPwd = document.getElementById('cp-new').value;
+  var msg    = document.getElementById('cp-msg');
+  msg.style.display='none';
+  if (!oldPwd||!newPwd){ showMsg(msg,'Remplissez les deux champs.',false); return; }
+  if (newPwd.length<8){ showMsg(msg,'Nouveau mot de passe : minimum 8 caracteres.',false); return; }
+  if (oldPwd===newPwd){ showMsg(msg,'Le nouveau mot de passe doit etre different.',false); return; }
+  try {
+    document.getElementById('overlay').classList.add('on');
+    var res = await ghRead(FILES.users);
+    var oldHash = await sha256(oldPwd);
+    var me = (res.data.users||[]).find(function(u){ return u.email===session.email && u.passwordHash===oldHash; });
+    if (!me){ showMsg(msg,'Mot de passe actuel incorrect.',false); return; }
+    var newHash = await sha256(newPwd);
+    var updated = { users:(res.data.users||[]).map(function(u){
+      return u.email===session.email ? Object.assign({},u,{passwordHash:newHash}) : u;
+    })};
+    await ghWrite(FILES.users, updated, res.sha);
+    document.getElementById('cp-old').value='';
+    document.getElementById('cp-new').value='';
+    if(document.getElementById('pwd-strength2')) document.getElementById('pwd-strength2').style.display='none';
+    showMsg(msg,'Mot de passe mis a jour.', true);
+    toast('Mot de passe mis a jour !', 'ok');
+  } catch(e){ showMsg(msg,'Erreur : '+e.message, false); }
   finally { document.getElementById('overlay').classList.remove('on'); }
 }
 
@@ -1360,6 +1527,7 @@ document.addEventListener('click', function(e) {
 
   if (action==='pick-preset')  { selectPreset(el.dataset.preset); return; }
   if (action==='del-user')     { deleteUser(el.dataset.email); return; }
+    if (action==='change-pwd')   { changePwd(); return; }
   if (action==='add-user')     { addUser(); return; }
   if (action==='copy-code')    { navigator.clipboard.writeText(document.getElementById('access-code').textContent).then(function(){ el.classList.add('copied'); setTimeout(function(){ el.classList.remove('copied'); },2000); }); return; }
   if (action==='media-tab')    { switchMediaTab(el.dataset.key); return; }
@@ -1405,8 +1573,39 @@ document.addEventListener('DOMContentLoaded', function() {
   // Restore session
   var storedToken=localStorage.getItem('zv_token');
   if (storedToken) GH_TOKEN=decodeToken(storedToken);
-  try { var s=localStorage.getItem('zv_session'); if(s) session=JSON.parse(s); } catch(e){ session=null; }
-  if (session&&GH_TOKEN) startAdmin(); else checkFirstRun();
+  // Restaurer session (dans une IIFE async pour pouvoir utiliser await)
+  (async function() {
+    try { var s=localStorage.getItem('zv_session'); if(s) session=JSON.parse(s); } catch(e){ session=null; }
+
+    // Session expiree ?
+    if (session && sessionIsExpired(session)) {
+      localStorage.removeItem('zv_session');
+      session = null;
+    }
+
+    var stored = localStorage.getItem('zv_token');
+    if (stored) GH_TOKEN = decodeToken(stored);
+
+    if (session && GH_TOKEN) {
+      // Re-valider le token GitHub avant d'ouvrir l'admin
+      try {
+        var testR = await fetch(ghUrl(FILES.users), { headers:ghH() });
+        if (testR.ok) {
+          startAdmin();
+        } else {
+          // Token invalide ou expire
+          localStorage.removeItem('zv_token');
+          GH_TOKEN = '';
+          checkFirstRun();
+        }
+      } catch(e) {
+        // Hors ligne : on laisse entrer en mode degrade
+        startAdmin();
+      }
+    } else {
+      checkFirstRun();
+    }
+  })();
 });
 </script>
 </body>

@@ -272,8 +272,8 @@
 <div id="setup-screen" class="auth-screen" style="display:none;">
   <div class="auth-box">
     <img src="/assets/images/logo/logo_zen-value_H.avif" alt="Zen Value" class="auth-logo" />
-    <h1>Premier lancement</h1>
-    <p>Aucun utilisateur n'existe encore. Creez le premier compte administrateur.</p>
+    <h1>Créer le compte administrateur</h1>
+    <p style="font-size:.85rem;color:#6b6b6d;">Aucun compte n'existe encore sur ce site. Créez le premier compte administrateur pour démarrer.</p>
     <label class="auth-label">Nom complet</label>
     <input id="setup-name" class="auth-input" type="text" placeholder="Prenom Nom" />
     <label class="auth-label">Email</label>
@@ -304,8 +304,9 @@
     <p style="font-size:.87rem;color:#6b6b6d;margin-bottom:1.8rem;">Entrez votre email et le code reçu par email. Vous choisirez ensuite votre mot de passe.</p>
     <label class="auth-label">Email</label>
     <input id="fl-email" class="auth-input" type="email" placeholder="prenom@zenvalue.fr" autocomplete="email" />
-    <label class="auth-label">Code d'invitation</label>
-    <textarea id="fl-code" class="auth-input invite-code-field" rows="3" placeholder="Collez ici le code reçu dans l'email d'invitation" style="resize:none;font-family:monospace;font-size:.75rem;"></textarea>
+    <label class="auth-label">Code d'invitation <span style="font-weight:400;color:#6b6b6d;font-size:.8rem;">— copiez-collez le code reçu par email en entier</span></label>
+    <textarea id="fl-code" class="auth-input invite-code-field" rows="3" placeholder="Collez ici le code reçu dans l'email d'invitation" style="resize:none;font-family:monospace;font-size:.75rem;" oninput="this.value=this.value.trim()"></textarea>
+    <p style="font-size:.75rem;color:#6b6b6d;margin-top:.3rem;">Copiez le code tel quel depuis l'email — pas besoin d'y ajouter quoi que ce soit.</p>
     <button class="btn btn-primary" id="btn-first-login">Valider mon invitation →</button>
     <div class="auth-error" id="fl-err"></div>
     <p style="margin-top:1.2rem;text-align:center;"><span style="font-size:.8rem;color:var(--gray);">Déjà un compte ? </span><a href="#" id="fl-back" style="font-size:.8rem;color:var(--green);">Connexion normale</a></p>
@@ -541,17 +542,33 @@ function saveSession(s) {
 /* ── Premier lancement ── */
 async function checkFirstRun() {
   var stored = localStorage.getItem('zv_token');
-  if (!stored) { showScreen('setup'); return; }
-  GH_TOKEN = decodeToken(stored);
+
+  // Vérifier si des utilisateurs existent déjà (lecture publique, repo public)
+  var usersExist = false;
   try {
-    var r = await fetch(ghUrl(FILES.users), { headers:ghH() });
-    if (!r.ok) { showScreen('setup'); return; }
-    var d = await r.json();
-    var bytes = new Uint8Array(atob(d.content.replace(/\n/g,'')).split('').map(function(c){return c.charCodeAt(0);}));
-    var users = JSON.parse(new TextDecoder('utf-8').decode(bytes));
-    if (!users.users || users.users.length===0) { showScreen('setup'); return; }
+    var rawUrl = 'https://raw.githubusercontent.com/'+GH_USER+'/'+GH_REPO+'/main/'+FILES.users;
+    var r = await fetch(rawUrl + '?t=' + Date.now()); // cache-busting
+    if (r.ok) {
+      var data = await r.json();
+      usersExist = data.users && data.users.length > 0;
+    }
+  } catch(e) { /* hors ligne ou repo privé : on continue */ }
+
+  if (!stored) {
+    // Pas de token local :
+    // → si des users existent, c'est un nouvel invité → écran première connexion
+    // → sinon c'est vraiment le tout premier admin
+    showScreen(usersExist ? 'first-login' : 'setup');
+    return;
+  }
+
+  GH_TOKEN = decodeToken(stored);
+  if (usersExist) {
     showScreen('login');
-  } catch(e) { showScreen('login'); }
+  } else {
+    // Token présent mais aucun user → setup (réinstallation ?)
+    showScreen('setup');
+  }
 }
 
 async function doSetup() {
@@ -956,11 +973,11 @@ var _pendingFirstLogin = null; // { userData, usersData, usersSha, siteToken }
 async function doFirstLogin() {
   hideErr('fl-err');
   var email = document.getElementById('fl-email').value.trim().toLowerCase();
-  var code  = document.getElementById('fl-code').value.trim();
+  var code  = document.getElementById('fl-code').value.replace(/\s+/g, ''); // supprimer TOUS les espaces/sauts de ligne
   if (!email || !code) { showErr('fl-err', 'Email et code requis.'); return; }
 
   var parsed = parseInviteCode(code);
-  if (!parsed) { showErr('fl-err', 'Code invalide. Verifiez que vous avez copie le code complet.'); return; }
+  if (!parsed) { showErr('fl-err', 'Code invalide. Assurez-vous d\'avoir copie le code en entier depuis l\'email, sans espace avant ou apres.'); return; }
 
   var btn = document.getElementById('btn-first-login');
   btn.disabled = true; btn.textContent = 'Verification...';
@@ -1096,7 +1113,7 @@ function showInviteModal(name, email, role, inviteCode) {
     '3. Saisis ton email et colle le code ci-dessus',
     '4. Choisis ton mot de passe personnel',
     '',
-    '/!\ Ce code est a usage unique et expire dans 48h.',
+    '/!\ Ce code est a usage unique et expire dans 48h. Copiez-le en entier, sans espace supplementaire.',
     'En cas de probleme, contacte ton administrateur.',
     '',
     session.name
@@ -1803,6 +1820,19 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('btn-login')       && document.getElementById('btn-login').addEventListener('click', doLogin);
   document.getElementById('btn-first-login') && document.getElementById('btn-first-login').addEventListener('click', doFirstLogin);
   document.getElementById('btn-set-pwd')     && document.getElementById('btn-set-pwd').addEventListener('click', doSetPwd);
+
+  // Fermeture modale invitation + navigation première connexion
+  document.addEventListener('click', function(e) {
+    if (e.target.id === 'fl-link') { e.preventDefault(); showScreen('first-login'); return; }
+    if (e.target.id === 'fl-back') { e.preventDefault(); showScreen('login'); return; }
+    var bg = document.getElementById('invite-modal-bg');
+    if (!bg) return;
+    if (e.target.id === 'invite-modal-close' ||
+        e.target.id === 'invite-close-btn'   ||
+        e.target === bg) {
+      bg.classList.remove('open');
+    }
+  });
   document.getElementById('btn-setup')  && document.getElementById('btn-setup').addEventListener('click', doSetup);
   document.getElementById('btn-logout') && document.getElementById('btn-logout').addEventListener('click', doLogout);
   document.getElementById('btn-save')   && document.getElementById('btn-save').addEventListener('click', doSave);

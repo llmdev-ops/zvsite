@@ -1,7 +1,8 @@
 /* CMS LOADER v2 — charge les JSON et injecte dans le DOM */
 
-var GH_USER = 'llmdev-ops';
-var GH_REPO = 'llmdev-ops.github.io';
+/* Config centralisée — voir assets/js/site-config.js */
+var GH_USER = (window.ZV_CONFIG && window.ZV_CONFIG.GH_USER) || 'llmdev-ops';
+var GH_REPO = (window.ZV_CONFIG && window.ZV_CONFIG.GH_REPO) || 'llmdev-ops.github.io';
 
 async function loadJSON(path) {
   try {

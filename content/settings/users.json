@@ -6,6 +6,13 @@
       "role": "admin",
       "passwordHash": "e749581b6505fa851c3bd3dbf7bf1d95ade422bd399c14cd09cae5a539e4fdc4",
       "createdAt": "2026-02-26T15:46:25.825Z"
+    },
+    {
+      "email": "aabdelnour@zenvalue.fr",
+      "name": "Angela Abdel Nour",
+      "role": "redacteur",
+      "passwordHash": "45c53afcf0fb64191b33ae1657747b98d1bc10c85c8f2ea3879bca2e878fd8ee",
+      "createdAt": "2026-03-09T14:10:11.883Z"
     }
   ]
 }

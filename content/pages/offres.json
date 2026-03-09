@@ -11,27 +11,31 @@
   "items": [
     {
       "categorie": "Conseil",
-      "titre": "Transformation avec résultats mesurables",
+      "titre": "Transformation avec Résultats Mesurables",
       "description": "Nous intervenons là où les pratiques agiles sont en place mais où les résultats concrets manquent. Notre approche itérative produit des impacts mesurables dès les premiers cycles.",
-      "cta_label": "En savoir plus"
+      "cta_label": "En savoir plus",
+      "cta_page": "contact"
     },
     {
       "categorie": "Formation",
-      "titre": "Développement des compétences Agile & Lean",
+      "titre": "Développement des Compétences Agile & Lean",
       "description": "Des formations certifiantes et sur-mesure pour ancrer les compétences dans la durée. Organisme certifié Qualiopi.",
-      "cta_label": "Voir les formations"
+      "cta_label": "Voir les formations",
+      "cta_page": "formation"
     },
     {
       "categorie": "Coaching",
-      "titre": "Accompagnement des équipes et dirigeants",
+      "titre": "Accompagnement des Équipes et Dirigeants",
       "description": "Coachs agiles et experts Lean qui s'intègrent à vos équipes pour transférer les compétences et garantir l'autonomie.",
-      "cta_label": "En savoir plus"
+      "cta_label": "En savoir plus",
+      "cta_page": "contact"
     },
     {
       "categorie": "Performance",
-      "titre": "Pilotage par la valeur",
+      "titre": "Pilotage par la Valeur",
       "description": "Mise en place d'indicateurs orientés valeur et de boucles d'apprentissage courtes pour piloter la transformation par les données.",
-      "cta_label": "En savoir plus"
+      "cta_label": "En savoir plus",
+      "cta_page": "contact"
     }
   ]
 }

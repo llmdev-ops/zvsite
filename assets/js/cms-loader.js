@@ -88,7 +88,7 @@ async function loadOffres() {
       +'<div class="offre-num">0'+(i+1)+' — '+(o.categorie||'')+'</div>'
       +'<h3>'+(o.titre||'')+'</h3>'
       +'<p>'+(o.description||'')+'</p>'
-      +'<a href="#" class="offre-link" data-page="'+(o.cta_page||'contact')+'">'+(o.cta_label||'En savoir plus')+' →</a>'
+      +'<a href="#" class="offre-link" data-offre-id="'+(o.id||i)+'">'+(o.cta_label||'En savoir plus')+' →</a>'
     +'</div>';
   }).join('');
 }
@@ -120,8 +120,15 @@ document.addEventListener('click', function(e) {
   var offreLink = e.target.closest('.offre-link');
   if (offreLink) {
     e.preventDefault();
-    var page = offreLink.getAttribute('data-page') || 'contact';
-    if (typeof showPage === 'function') showPage(page);
+    var offreId = offreLink.getAttribute('data-offre-id');
+    var offre = window._offresData
+      ? (isNaN(offreId) ? window._offresData.find(function(o){ return o.id === offreId; }) : window._offresData[parseInt(offreId,10)])
+      : null;
+    if (offre) {
+      window.showOffreDetail(offre);
+    } else if (typeof showPage === 'function') {
+      showPage('contact');
+    }
     return;
   }
 

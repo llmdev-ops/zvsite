@@ -22,11 +22,12 @@
       "email": "mdodin@zenvalue.fr",
       "name": "Mael  Dodin",
       "role": "admin",
-      "passwordHash": null,
-      "firstLogin": true,
-      "inviteTokenHash": "8d29ff54699b638c5b914a05578d745632a23b4bf8becf720cce2b8346c5f122",
-      "inviteExpiry": "2026-03-12T09:33:06.216Z",
-      "createdAt": "2026-03-10T09:33:06.216Z"
+      "passwordHash": "dfd84d0a551a3b609da752c2c1bdc3fcf8bd57b890f4065516161585c97dc154",
+      "firstLogin": false,
+      "inviteTokenHash": null,
+      "inviteExpiry": null,
+      "createdAt": "2026-03-10T09:33:06.216Z",
+      "activatedAt": "2026-03-10T09:34:42.412Z"
     }
   ]
 }

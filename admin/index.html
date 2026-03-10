@@ -541,6 +541,25 @@ const ADMIN_FONTS = [
 ];
 
 let GH_TOKEN = '';
+
+var LOG_KEY = 'zv_admin_log';
+var LOG_MAX  = 200;
+
+function logActivity(action, section, detail) {
+  var entry = {
+    ts:      new Date().toISOString(),
+    user:    session ? session.email : 'inconnu',
+    action:  action,
+    section: section || '',
+    detail:  detail  || ''
+  };
+  var log = [];
+  try { log = JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch(e) {}
+  log.unshift(entry);
+  if (log.length > LOG_MAX) log = log.slice(0, LOG_MAX);
+  try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch(e) {}
+}
+
 let session = null;
 let state = { section:'accueil', data:{}, sha:'' };
 let mediaTab = 'illustrations';
@@ -766,7 +785,6 @@ function showScreen(name) {
 }
 
 function startAdmin() {
-  logActivity('login', '', session ? session.email : '');
   showScreen('admin');
   document.getElementById('admin-user-lbl').textContent = session.name+' ('+session.email+')';
   const badge = document.getElementById('admin-role-badge');
@@ -2466,26 +2484,6 @@ document.addEventListener('input', function(e) {
   wrap.innerHTML = url ? '<img src="'+url+'" class="img-field-preview" onerror="this.style.display=\'none\'" />' : '';
 });
 
-/* ══════════════════════════════════════════════════════
-   JOURNAL ACTIVITE (#4)
-══════════════════════════════════════════════════════ */
-var LOG_KEY = 'zv_admin_log';
-var LOG_MAX  = 200;
-
-function logActivity(action, section, detail) {
-  var entry = {
-    ts:      new Date().toISOString(),
-    user:    session ? session.email : 'inconnu',
-    action:  action,
-    section: section || '',
-    detail:  detail  || ''
-  };
-  var log = [];
-  try { log = JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch(e) {}
-  log.unshift(entry);
-  if (log.length > LOG_MAX) log = log.slice(0, LOG_MAX);
-  try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch(e) {}
-}
 
 function rLog() {
   var log = [];

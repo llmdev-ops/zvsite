@@ -1,6 +1,6 @@
-/* CMS LOADER v2 — charge les JSON et injecte dans le DOM */
+/* CMS LOADER v2 -- charge les JSON et injecte dans le DOM */
 
-/* Config centralisée — voir assets/js/site-config.js */
+/* Config centralisee -- voir assets/js/site-config.js */
 var GH_USER = (window.ZV_CONFIG && window.ZV_CONFIG.GH_USER) || 'llmdev-ops';
 var GH_REPO = (window.ZV_CONFIG && window.ZV_CONFIG.GH_REPO) || 'llmdev-ops.github.io';
 
@@ -26,7 +26,7 @@ function toParas(text) {
     .map(function(l){ return '<p>' + l + '</p>'; }).join('');
 }
 
-/* ══ GLOBAL ══ */
+/* == GLOBAL == */
 async function loadGlobal() {
   var d = await loadJSON('content/settings/global.json'); if (!d) return;
   ['email','adresse','linkedin','copyright'].forEach(function(k){ inject('global.'+k, d[k]); });
@@ -34,7 +34,7 @@ async function loadGlobal() {
   document.querySelectorAll('[data-cms-href="global.email"]').forEach(function(el){ el.href = 'mailto:'+d.email; });
 }
 
-/* ══ RÉSULTATS ══ */
+/* == RÉSULTATS == */
 async function loadResultats() {
   var d = await loadJSON('content/settings/resultats.json'); if (!d) return;
   ['r1','r2','r3','r4'].forEach(function(k){
@@ -43,7 +43,7 @@ async function loadResultats() {
   });
 }
 
-/* ══ ACCUEIL ══ */
+/* == ACCUEIL == */
 async function loadAccueil() {
   var d = await loadJSON('content/pages/accueil.json'); if (!d) return;
   ['eyebrow','tagline1','tagline2','soustitre','cta1','cta2','badge','quote',
@@ -56,7 +56,7 @@ async function loadAccueil() {
   ].forEach(function(k){ inject('accueil.'+k, d[k]); });
 }
 
-/* ══ QSN ══ */
+/* == QSN == */
 async function loadQSN() {
   var d = await loadJSON('content/pages/qui-sommes-nous.json'); if (!d) return;
   ['mission_tag','mission_h2','discours1','discours2','discours3',
@@ -67,7 +67,7 @@ async function loadQSN() {
   ].forEach(function(k){ inject('qsn.'+k, d[k]); });
 }
 
-/* ══ PRINCIPES ══ */
+/* == PRINCIPES == */
 async function loadPrincipes() {
   var d = await loadJSON('content/pages/principes.json'); if (!d||!d.items) return;
   var c = document.getElementById('principes-container'); if (!c) return;
@@ -76,24 +76,100 @@ async function loadPrincipes() {
   }).join('');
 }
 
-/* ══ OFFRES ══ */
+/* == OFFRES == */
 async function loadOffres() {
   var d = await loadJSON('content/pages/offres.json'); if (!d) return;
   ['section_tag','h2','lead','resultats_tag','cas_tag','cas_h2','cta_h2','cta_desc','cta_btn'
   ].forEach(function(k){ inject('offres.'+k, d[k]); });
   if (!d.items) return;
   var c = document.getElementById('offres-container'); if (!c) return;
-  c.innerHTML = d.items.map(function(o,i){
+  window._offresData = d.items;
     return '<div class="offre-card reveal">'
-      +'<div class="offre-num">0'+(i+1)+' — '+(o.categorie||'')+'</div>'
+      +'<div class="offre-num">0'+(i+1)+' -- '+(o.categorie||'')+'</div>'
       +'<h3>'+(o.titre||'')+'</h3>'
       +'<p>'+(o.description||'')+'</p>'
-      +'<a href="#" class="offre-link" data-offre-id="'+(o.id||i)+'">'+(o.cta_label||'En savoir plus')+' →</a>'
+      +'<a href="#" class="offre-link" data-offre-id="'+(o.id||i)+'">'+(o.cta_label||'En savoir plus')+' -></a>'
+    +'</div>';
+    window._offresData = d.items;
+  c.innerHTML = d.items.map(function(o,i){
+    return '<div class="offre-card reveal">'
+      +'<div class="offre-num">0'+(i+1)+' -- '+(o.categorie||'')+'</div>'
+      +'<h3>'+(o.titre||'')+'</h3>'
+      +'<p>'+(o.description||'')+'</p>'
+      +'<a href="#" class="offre-link" data-offre-id="'+(o.id||i)+'">'+(o.cta_label||'En savoir plus')+' -></a>'
     +'</div>';
   }).join('');
 }
 
-/* ══ CAS CLIENTS ══ */
+/* == OFFRE DETAIL == */
+window._offresData = window._offresData || [];
+
+window.showOffreDetail = function showOffreDetail(o) {
+  function set(id, val) { var el=document.getElementById(id); if(el) el.innerHTML=val||''; }
+
+  set('od-categorie',  o.categorie || '');
+  set('od-titre',      o.titre || '');
+  set('od-description', o.description || '');
+  set('od-cible',      o.cible || '');
+  set('od-cible-pill', (o.cible || '').split(',')[0].trim());
+  set('od-duree-pill', o.duree || '');
+  set('od-resultat',   o.resultat_attendu || '');
+
+  // Problemes
+  var prob = document.getElementById('od-problemes');
+  if (prob) prob.innerHTML = (o.problemes||[]).map(function(p){
+    return '<div class="od-probleme-item">'+p+'</div>';
+  }).join('');
+
+  // Demarche
+  var dem = document.getElementById('od-demarche');
+  if (dem) dem.innerHTML = (o.demarche||[]).map(function(e,i){
+    return '<div class="od-etape">'
+      +'<div class="od-etape-num">'+(i+1)+'</div>'
+      +'<div class="od-etape-content">'
+        +'<div class="od-etape-titre">'+e.etape+'</div>'
+        +'<div class="od-etape-desc">'+e.desc+'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  // Livrables
+  var liv = document.getElementById('od-livrables');
+  if (liv) liv.innerHTML = (o.livrables||[]).map(function(l){ return '<li>'+l+'</li>'; }).join('');
+
+  // Prerequis
+  var pre = document.getElementById('od-prerequis');
+  if (pre) pre.innerHTML = (o.prerequis||[]).map(function(p){ return '<li>'+p+'</li>'; }).join('');
+
+  // Cas clients lies
+  var casSection = document.getElementById('od-cas-section');
+  var casGrid    = document.getElementById('od-cas-grid');
+  if (casGrid) {
+    var casIds = o.cas_ids || [];
+    if (window._casData && casIds.length > 0) {
+      casGrid.innerHTML = casIds.map(function(idx){
+        var cas = window._casData[idx];
+        if (!cas) return '';
+        var chips = (cas.resultats||[]).slice(0,3).map(function(r){
+          return '<span class="od-cas-chip">'+r.chiffre+'</span>';
+        }).join('');
+        return '<div class="od-cas-card zv-cas-btn" data-i="'+idx+'">'
+          +'<div class="od-cas-card-titre">'+cas.titre+'</div>'
+          +'<div class="od-cas-card-resultats">'+chips+'</div>'
+          +'<div class="od-cas-cta">Voir le cas client -></div>'
+        +'</div>';
+      }).filter(Boolean).join('');
+      if (casSection) casSection.style.display = casGrid.innerHTML ? '' : 'none';
+    } else {
+      if (casSection) casSection.style.display = 'none';
+    }
+  }
+
+  showPage('offre-detail');
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+
+/* == CAS CLIENTS == */
 window._casData = [];
 
 async function loadCasClients() {
@@ -109,12 +185,12 @@ async function loadCasClients() {
       +'<h3>'+(cas.titre||'')+'</h3>'
       +'<p class="cas-desc">'+(cas.description||'')+'</p>'
       +resultats
-      +'<button type="button" class="btn btn-outline zv-cas-btn" data-i="'+i+'" style="margin-top:1.2rem;width:auto;">Voir le cas client →</button>'
+      +'<button type="button" class="btn btn-outline zv-cas-btn" data-i="'+i+'" style="margin-top:1.2rem;width:auto;">Voir le cas client -></button>'
     +'</div>';
   }).join('');
 }
 
-/* Délégation au niveau document — zéro risque de timing ou de propagation */
+/* Delegation au niveau document -- zero risque de timing ou de propagation */
 document.addEventListener('click', function(e) {
   // Liens "En savoir plus" des offres
   var offreLink = e.target.closest('.offre-link');
@@ -168,7 +244,7 @@ window.showCasDetail = function showCasDetail(cas) {
   window.scrollTo({top:0,behavior:'smooth'});
 };
 
-/* ══ FORMATION ══ */
+/* == FORMATION == */
 async function loadFormation() {
   var d = await loadJSON('content/pages/formation.json'); if (!d) return;
   ['section_tag','titre','soustitre','qualiopi_tag','qualiopi_h2','texte1','texte2',
@@ -177,7 +253,7 @@ async function loadFormation() {
   document.querySelectorAll('[data-cms-href="formation.catalogue"]').forEach(function(el){ el.href = d.catalogue_url||'#'; });
 }
 
-/* ══ RECRUTEMENT ══ */
+/* == RECRUTEMENT == */
 async function loadRecrutement() {
   var d = await loadJSON('content/pages/recrutement.json'); if (!d) return;
   ['section_tag','titre','soustitre','intro','tagline',
@@ -205,7 +281,7 @@ async function loadRecrutement() {
   }
 }
 
-/* ══ RSE ══ */
+/* == RSE == */
 async function loadRSE() {
   var d = await loadJSON('content/pages/rse.json'); if (!d) return;
   ['section_tag','titre','intro','axe1_titre','axe1_texte','axe2_titre','axe2_texte',
@@ -219,7 +295,7 @@ async function loadRSE() {
   }
 }
 
-/* ══ LOGOS CLIENTS (GitHub API) ══ */
+/* == LOGOS CLIENTS (GitHub API) == */
 async function loadLogosClients() {
   var container = document.getElementById('clients-logos'); if (!container) return;
   try {
@@ -237,7 +313,7 @@ async function loadLogosClients() {
   } catch(e) { /* garder les placeholders */ }
 }
 
-/* ══ INIT ══ */
+/* == INIT == */
 async function initCMS() {
   await Promise.all([
     loadGlobal(), loadResultats(), loadAccueil(), loadQSN(), loadPrincipes(),

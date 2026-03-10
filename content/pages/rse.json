@@ -1,10 +1,46 @@
 {
-  "items": [
-    { "icon": "🎯", "titre": "Impact avant les pratiques", "description": "Nous ne déployons pas des méthodes pour les méthodes — chaque intervention vise un résultat mesurable." },
-    { "icon": "🤝", "titre": "Co-construction", "description": "Nous construisons avec vous, pas pour vous. L'appropriation est la condition de la durabilité." },
-    { "icon": "📊", "titre": "Pilotage par les données", "description": "Chaque décision s'appuie sur des indicateurs concrets, pas sur des intuitions." },
-    { "icon": "🔄", "titre": "Amélioration continue", "description": "Nous appliquons à nos propres pratiques les principes que nous enseignons à nos clients." },
-    { "icon": "🌱", "titre": "Durabilité", "description": "Une transformation réussie est celle qui tient dans le temps, sans nous — nous préparons votre autonomie." },
-    { "icon": "💡", "titre": "Pragmatisme", "description": "Nous adaptons les frameworks à votre contexte, jamais l'inverse." }
+  "section_tag": "Nos engagements RSE",
+  "titre": "Une performance <em>qui a du sens</em>",
+  "intro": "Chez Zen Value, la responsabilité sociale n'est pas un axe de communication. C'est un engagement opérationnel, mesuré et amélioré avec la même exigence que nous appliquons à la performance de nos clients.",
+  "axe1_titre": "Une organisation inclusive et apprenante",
+  "axe1_texte": "Nous construisons une organisation où la diversité est une source de performance. Toutes nos décisions RH — recrutement, évolution, rémunération — reposent sur des critères objectifs et transparents. Notre culture favorise la remise en question constructive, le droit à l'erreur et l'apprentissage continu. Chaque consultant bénéficie d'un budget annuel de développement des compétences qu'il pilote lui-même.",
+  "axe2_titre": "Un impact environnemental maîtrisé",
+  "axe2_texte": "Nous mesurons notre empreinte carbone annuellement et appliquons une politique de déplacement raisonnée : préférence systématique au train pour les trajets inférieurs à 4h, recours au distanciel pour les réunions sans valeur ajoutée présentielle. Nos missions intègrent la durabilité comme critère de réussite au même titre que la performance économique.",
+  "mesures_tag": "Nos engagements concrets",
+  "mesures_h2": "Des actions, <em>pas des intentions</em>",
+  "cta_h2": "Vous partagez ces valeurs ?",
+  "cta_desc": "Nos engagements RSE sont aussi un critère de sélection de nos partenaires et clients.",
+  "cta_btn": "Discutons-en",
+  "mesures": [
+    {
+      "icon": "⚖️",
+      "titre": "Équité salariale",
+      "texte": "Grille de rémunération transparente et revue annuellement. Écart max de 1 à 5 entre le salaire le plus bas et le plus élevé. Aucun écart de salaire lié au genre à poste et expérience équivalents."
+    },
+    {
+      "icon": "🎓",
+      "titre": "Formation continue",
+      "texte": "Budget individuel de 2 000 € par an et par consultant pour se former librement. 20 % du temps de chaque mission consacré au partage de connaissances en interne. Encouragement des certifications et de la veille active."
+    },
+    {
+      "icon": "🌍",
+      "titre": "Mobilité durable",
+      "texte": "100 % des déplacements inférieurs à 500 km effectués en train. Remboursement intégral des abonnements transport en commun. Forfait mobilités durables pour les collaborateurs venant à vélo."
+    },
+    {
+      "icon": "🤝",
+      "titre": "Sélection éthique des missions",
+      "texte": "Nous déclinons les missions incompatibles avec nos valeurs : secteurs à fort impact environnemental négatif, organisations au management toxique documenté, projets contraires à l'intérêt des parties prenantes."
+    },
+    {
+      "icon": "♻️",
+      "titre": "Zéro papier",
+      "texte": "Livraisons 100 % digitales. Aucun document imprimé lors des missions et formations. Outils collaboratifs cloud privilégiés pour réduire les échanges physiques superflus."
+    },
+    {
+      "icon": "📣",
+      "titre": "Transparence et reporting",
+      "texte": "Publication annuelle de nos indicateurs RSE : bilan carbone, parité, taux de formation, satisfaction collaborateurs. Nos clients peuvent nous challenger sur ces données à tout moment."
+    }
   ]
 }
